@@ -192,7 +192,7 @@ def view_database():
 
 def main():
   verify_client_license()
-  while Time := True:
+  while True:
     banner()
     print("1. Scan Local Wi-Fi (LAN) + Silent Port Mapping")
     print("2. Scan Custom Public / ISP Subnet Range")
