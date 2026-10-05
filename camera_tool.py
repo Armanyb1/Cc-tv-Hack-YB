@@ -47,41 +47,69 @@ def verify_client_license():
     response = urllib.request.urlopen(url, timeout=5)
     lines = response.read().decode("utf-8").splitlines()
     is_authorized = False
+    expiry_msg = "No License Found"
+    
     for line in lines:
       line = line.strip()
       if not line or line.startswith("#"):
         continue
-      parts = line.split()
+      
+      # Handle both space and comma separation safely
+      clean_line = line.replace(",", " ")
+      parts = clean_line.split(maxsplit=1)
+      
       if len(parts) >= 2:
-        file_hwid, expiry_value = parts[0], parts[1]
+        file_hwid = parts[0].strip()
+        expiry_value = parts[1].strip()
+        
         if file_hwid == user_hwid:
           if expiry_value.lower() == "lifetime":
             is_authorized = True
+            expiry_msg = "LIFETIME (আজীবন)"
             break
           else:
             try:
-              expiry_date = datetime.strptime(expiry_value, "%Y-%m-%d")
+              # Try parsing with time first (%Y-%m-%d %H:%M:%S)
+              try:
+                expiry_date = datetime.strptime(expiry_value, "%Y-%m-%d %H:%M:%S")
+              except ValueError:
+                # Fallback to date only (%Y-%m-%d)
+                expiry_date = datetime.strptime(expiry_value, "%Y-%m-%d")
+              
               current_date = datetime.now()
               if current_date <= expiry_date:
                 is_authorized = True
+                rem = expiry_date - current_date
+                expiry_msg = f"Active ({rem.days} Days, {rem.seconds // 3600} Hours left)"
                 break
               else:
-                print("\n\033[91m[-] আপনার লাইসেন্সের মেয়াদ শেষ হয়ে গেছে! টুলটি লক করা হয়েছে।\033[0m")
-                print("[-] নতুন করে লাইসেন্স নিতে যোগাযোগ করুন: https://t.me/Armanyb")
+                print("\n\033[91m" + "=" * 65)
+                print(" [X] LICENSE EXPIRED: আপনার লাইসেন্সের মেয়াদ শেষ হয়ে গেছে!")
+                print(f" [!] আপনার ডিভাইস কোড: {user_hwid}")
+                print(" [!] টুলটি চালাতে হলে এডমিনের থেকে নতুন লাইসেন্স নিতে হবে।")
+                print(" [!] Telegram: https://t.me/Armanyb | bKash/Nagad: 01880374287")
+                print("=" * 65 + "\033[0m")
                 sys.exit()
-            except ValueError:
-              print("\n\033[91m[-] লাইসেন্স ডেট ফরম্যাটে সমস্যা রয়েছে!\033[0m")
-              sys.exit()
+            except Exception as ex:
+              continue
+
     if not is_authorized:
       print("\n\033[91m" + "=" * 65)
       print(" [!] ACCESS DENIED: আপনার ডিভাইসটি রেজিস্টার্ড নয় বা লাইসেন্স নেই!")
       print(f" [!] আপনার ছোট ডিভাইস কোড: {user_hwid}")
-      print(" [!] এই কোডটি এডমিনকে (Telegram: https://t.me/Armanyb) পাঠিয়ে দিন।")
+      print(" [!] এই কোডটি কপি করে এডমিনকে (Telegram: https://t.me/Armanyb) পাঠিয়ে দিন।")
       print("=" * 65 + "\033[0m")
       sys.exit()
+      
+  except SystemExit:
+    sys.exit()
   except Exception as e:
-    print(f"\n\033[93m[!] সতর্কতা: লাইসেন্স সার্ভার কানেকশনে সমস্যা হয়েছে বা ইন্টারনেট নেই! ({e})\033[0m")
-    print("[!] ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।")
+    print("\n\033[91m" + "=" * 65)
+    print(" [!] ACCESS DENIED: লাইসেন্স সার্ভার চেক করা যায়নি!")
+    print(f" [!] আপনার ছোট ডিভাইস কোড: {user_hwid}")
+    print(" [!] এই কোডটি এডমিনকে (Telegram: https://t.me/Armanyb) পাঠিয়ে দিন।")
+    print(f" [!] (Details: {e})")
+    print("=" * 65 + "\033[0m")
     sys.exit()
 
 def banner():
