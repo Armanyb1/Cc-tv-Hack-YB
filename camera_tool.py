@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Arman Local Wi-Fi Camera Scanner & Terminal Analyzer (Pro)
+Arman Advanced Multi-Mode Camera Scanner & Guide (Pro)
 Author: Arman Yb
 GitHub: github.com/Armanyb1
 Telegram: @Armanyb
@@ -107,8 +107,8 @@ def verify_online_license():
 def print_banner():
     banner = f"""
 ╔═══════════════════════════════════════════╗
-║   Arman Local Wi-Fi Terminal Scanner      ║
-║   Local LAN Recon & Direct Display Tool   ║
+║   Arman Multi-Mode Camera Recon Tool      ║
+║   Local LAN, Public Scan & App Guide Pro  ║
 ║   Telegram: @Armanyb                      ║
 ╚═══════════════════════════════════════════╝
 """
@@ -205,7 +205,7 @@ def run_local_scanner():
     
     local_ip, subnet = get_local_ip_subnet()
     print(f"{Fore.YELLOW}[i] Your Local IP: {local_ip}{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}[i] Scanning Local Subnet: {subnet}1 to {subnet}254 for Cameras...{Style.RESET_ALL}\n")
+    print(f"{Fore.YELLOW}[i] Scanning Local Subnet: {subnet}1 to {subnet}254...{Style.RESET_ALL}\n")
     
     queue = Queue()
     for _ in range(50):
@@ -221,7 +221,7 @@ def run_local_scanner():
         time.sleep(0.5)
         
     print(f"\n{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}             SCAN SUMMARY & DISCOVERED DEVICES             {Style.RESET_ALL}")
+    print(f"{Fore.GREEN}           LOCAL SCAN SUMMARY & DISCOVERED DEVICES           {Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
     
     if scan_results:
@@ -235,16 +235,94 @@ def run_local_scanner():
         print(f"{Fore.RED}[!] No cameras or devices found on this Wi-Fi network.{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n")
 
+def run_public_scanner():
+    global stop_scan, scan_results
+    stop_scan = False
+    scan_results = []
+    detected_ips.clear()
+    
+    target_subnet = input(f"{Fore.GREEN}Enter Target IP Prefix or Subnet (e.g. 103.102.25): {Style.RESET_ALL}").strip()
+    if not target_subnet:
+        target_subnet = "103.102.25"
+        
+    print(f"{Fore.YELLOW}[i] Scanning Public Subnet: {target_subnet}.1 to {target_subnet}.254...{Style.RESET_ALL}\n")
+    
+    queue = Queue()
+    for _ in range(50):
+        threading.Thread(target=execute, args=(queue,), daemon=True).start()
+        
+    ports_to_check = [80, 8080, 8000, 37777]
+    for i in range(1, 255):
+        ip = f"{target_subnet}.{i}"
+        for port in ports_to_check:
+            queue.put((ip, port))
+            
+    while not queue.empty() and not stop_scan:
+        time.sleep(0.5)
+        
+    print(f"\n{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}          PUBLIC SCAN SUMMARY & DISCOVERED CAMERAS           {Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
+    
+    if scan_results:
+        for idx, res in enumerate(scan_results, 1):
+            print(f"{Fore.WHITE}[{idx}] Brand : {res['type']}")
+            print(f"    IP & Port : {res['ip']}:{res['port']}")
+            print(f"    URL       : {res['url']}")
+            print(f"    Auth/Pass : {res['creds']}")
+            print(f"{'-'*60}")
+    else:
+        print(f"{Fore.RED}[!] No cameras found in this range.{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n")
+
+def show_app_guide():
+    guide_text = f"""
+{Fore.CYAN}============================================================
+           CAMERA LOGIN & MOBILE APP GUIDE (REFERENCE)
+============================================================
+{Fore.YELLOW}1. Hikvision Cameras:
+   - Mobile Apps: Hik-Connect, iVMS-4500, Guarding Vision
+   - PC Software: iVMS-4200
+   - Default Port: 80, 8000
+
+{Fore.YELLOW}2. Dahua Cameras:
+   - Mobile Apps: DMSS, gDMSS Plus, IDMSS
+   - PC Software: SmartPSS
+   - Default Port: 80, 37777
+
+{Fore.YELLOW}3. Generic / Other IP Cameras:
+   - Mobile Apps: IP Cam Viewer, VLC Media Player (Network Stream)
+   - PC Software: VLC, Onvif Device Manager
+   - Default Port: 554 (RTSP), 8080
+
+{Fore.WHITE}Tip: Copy the discovered IP:Port and paste it into the 
+corresponding app or browser to view the live camera feed!
+{Fore.CYAN}============================================================{Style.RESET_ALL}
+"""
+    print(guide_text)
+
 def main():
     verify_online_license()
     print_banner()
     while True:
-        print(f"\n{Fore.CYAN}1. Scan Current Wi-Fi & List Devices\n2. Exit{Style.RESET_ALL}")
-        choice = input(f"{Fore.GREEN}Select option (1-2): {Style.RESET_ALL}").strip()
+        print(f"\n{Fore.CYAN}=== MAIN MENU ===")
+        print("1. Scan Current Local Wi-Fi (LAN)")
+        print("2. Scan Public / ISP IP Range")
+        print("3. View Camera Login App Guide")
+        print(f"4. Exit{Style.RESET_ALL}")
+        
+        choice = input(f"{Fore.GREEN}Select option (1-4): {Style.RESET_ALL}").strip()
         if choice == '1':
             run_local_scanner()
         elif choice == '2':
+            run_public_scanner()
+        elif choice == '3':
+            show_app_guide()
+        elif choice == '4':
+            print(f"{Fore.YELLOW}[*] Exiting tool. Goodbye, Arman!{Style.RESET_ALL}")
             break
+        else:
+            print(f"{Fore.RED}[!] Invalid option! Choose between 1 to 4.{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     main()
