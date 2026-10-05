@@ -22,7 +22,6 @@ import asyncio
 import os
 import platform
 import uuid
-import hashlib
 
 try:
     from colorama import Fore, Style, init
@@ -54,12 +53,19 @@ stop_scan = False
 pause_scan = False
 
 def get_hwid():
+    device_id_path = "/data/data/com.termux/files/home/.device_id"
     try:
-        node = uuid.getnode()
-        system_info = platform.node() + platform.machine() + str(node)
-        return hashlib.sha256(system_info.encode()).hexdigest().upper()
+        if os.path.exists(device_id_path):
+            with open(device_id_path, "r") as f:
+                return f.read().strip()
+        else:
+            short_id = str(uuid.uuid4()).split('-')[0].upper()
+            hwid = f"ARMAN-{short_id}"
+            with open(device_id_path, "w") as f:
+                f.write(hwid)
+            return hwid
     except:
-        return "ARMAN-DEFAULT-HWID"
+        return "ARMAN-PRO-ID"
 
 def verify_online_license():
     print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
