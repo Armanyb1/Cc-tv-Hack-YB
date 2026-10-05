@@ -1,3 +1,4 @@
+cat << 'EOF' > camera_tool.py
 from datetime import datetime
 import os
 import platform
@@ -227,3 +228,4 @@ def main():
 
 if __name__ == "__main__":
   main()
+EOF
