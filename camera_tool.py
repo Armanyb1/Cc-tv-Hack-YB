@@ -204,7 +204,6 @@ def scan(ip, port):
                     server_header = line.split(':', 1)[1].strip()
                     break
 
-            # Deep Banner Grabbing & Signature Checks
             if 'goahead' in resp_lower or 'goahead-webs' in resp_lower:
                 camera_found = True
                 cam_type = f"IP Camera (GoAhead Web Server - {server_header})"
@@ -243,7 +242,6 @@ def scan(ip, port):
         pass
 
 def is_host_alive(ip):
-    # Fast Host Discovery check on common ports
     for p in [80, 443, 8080, 554, 8000, 37777]:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -271,7 +269,7 @@ def get_ports_from_user():
     return [80, 8080, 554, 8000, 37777]
 
 def update_progress(completed, total):
-    percent = int((completed / total) * 100)
+    percent = int((completed / total) * 100) if total > 0 else 0
     filled = int(percent / 10)
     bar = '█' * filled + '░' * (10 - filled)
     sys.stdout.write(f"\r{Fore.YELLOW}[{bar}] {percent}% Completed ({completed}/{total} IPs Checked){Style.RESET_ALL}")
@@ -288,17 +286,17 @@ def run_scanner_engine(subnet, ports_to_check):
     
     for i in range(1, 255):
         ip = f"{subnet}{i}"
+        sys.stdout.write(f"\r{Fore.WHITE}[Checking Host]: {ip} ...{Style.RESET_ALL}")
+        sys.stdout.flush()
         if is_host_alive(ip):
             live_hosts.append(ip)
+            print(f"\n{Fore.GREEN}[+] Active Host Found: {ip}{Style.RESET_ALL}")
             
-    print(f"{Fore.GREEN}[✓] Host Discovery Completed! Active Hosts Found: {len(live_hosts)}{Style.RESET_ALL}\n")
+    print(f"\n{Fore.GREEN}[✓] Host Discovery Completed! Active Hosts Found: {len(live_hosts)}{Style.RESET_ALL}\n")
     print(f"{Fore.CYAN}[*] Step 2: Scanning Ports & Deep Banner Grabbing on Active Hosts...{Style.RESET_ALL}\n")
     
     queue = Queue()
-    for _ in range(50):
-        t = threading.Thread(target=lambda q: [s for s in [q.get() and scan(s[0], s[1]) or q.task_done() for s in iter(q.get, None)]], daemon=True) # streamlined queue worker loop
-        
-    # Better thread worker:
+    
     def worker(q):
         global stop_scan
         while not stop_scan:
@@ -313,10 +311,9 @@ def run_scanner_engine(subnet, ports_to_check):
         threading.Thread(target=worker, args=(queue,), daemon=True).start()
         
     total_tasks = len(live_hosts) * len(ports_to_check)
-    completed_tasks = 0
     
     if total_tasks == 0:
-        print(f"{Fore.RED}[!] No active hosts to scan.{Style.RESET_ALL}")
+        print(f"{Fore.RED}[!] No active hosts to scan in this range.{Style.RESET_ALL}")
         return
 
     for ip in live_hosts:
@@ -363,6 +360,30 @@ def run_public_scanner():
     print(f"{Fore.YELLOW}[i] Scanning Public Subnet: {target_subnet}.1 to {target_subnet}.254{Style.RESET_ALL}")
     run_scanner_engine(target_subnet + ".", ports_to_check)
 
+def run_auto_bd_isp_scanner():
+    print(f"\n{Fore.CYAN}=== Auto Bangladesh ISP Subnet Scanner ===")
+    print("Popular BD ISP Subnet Pools Available:")
+    print("1. 103.102.25 (Common ISP Pool)")
+    print("2. 103.114.10 (Popular Broadband Pool)")
+    print("3. 118.179.16 (Telecom/ISP Range)")
+    print("4. Enter Custom BD Subnet Prefix")
+    
+    choice = input(f"{Fore.GREEN}Select option (1-4): {Style.RESET_ALL}").strip()
+    subnet_prefix = "103.102.25"
+    
+    if choice == '2':
+        subnet_prefix = "103.114.10"
+    elif choice == '3':
+        subnet_prefix = "118.179.16"
+    elif choice == '4':
+        subnet_prefix = input(f"{Fore.GREEN}Enter Custom Subnet (e.g. 43.245.120): {Style.RESET_ALL}").strip()
+        if not subnet_prefix:
+            subnet_prefix = "103.102.25"
+            
+    ports_to_check = get_ports_from_user()
+    print(f"{Fore.YELLOW}[i] Auto-Scanning BD ISP Subnet: {subnet_prefix}.1 to {subnet_prefix}.254{Style.RESET_ALL}")
+    run_scanner_engine(subnet_prefix + ".", ports_to_check)
+
 def view_saved_database():
     print(f"\n{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
     print(f"{Fore.GREEN}        SAVED CAMERAS & CREDENTIALS DATABASE (DB)            {Style.RESET_ALL}")
@@ -385,22 +406,25 @@ def main():
     while True:
         print(f"\n{Fore.CYAN}=== MAIN MENU ===")
         print("1. Scan Local Wi-Fi (LAN) + Gateway Brand + Fast Ping + Progress Bar")
-        print("2. Scan Public / ISP Subnet Range + Fast Ping + Progress Bar")
-        print("3. View Saved Cameras Database (arman_live_cameras.txt)")
-        print(f"4. Exit{Style.RESET_ALL}")
+        print("2. Scan Custom Public / ISP Subnet Range")
+        print("3. Auto Bangladesh ISP Subnets Recon & Credential Check")
+        print("4. View Saved Cameras Database (arman_live_cameras.txt)")
+        print(f"5. Exit{Style.RESET_ALL}")
         
-        choice = input(f"{Fore.GREEN}Select option (1-4): {Style.RESET_ALL}").strip()
+        choice = input(f"{Fore.GREEN}Select option (1-5): {Style.RESET_ALL}").strip()
         if choice == '1':
             run_local_scanner()
         elif choice == '2':
             run_public_scanner()
         elif choice == '3':
-            view_saved_database()
+            run_auto_bd_isp_scanner()
         elif choice == '4':
+            view_saved_database()
+        elif choice == '5':
             print(f"{Fore.YELLOW}[*] Exiting tool. Goodbye, Arman!{Style.RESET_ALL}")
             break
         else:
-            print(f"{Fore.RED}[!] Invalid option! Choose between 1 to 4.{Style.RESET_ALL}")
+            print(f"{Fore.RED}[!] Invalid option! Choose between 1 to 5.{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     main()
