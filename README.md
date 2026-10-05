@@ -25,7 +25,7 @@ pkg update && pkg upgrade -y
 pkg install python git -y
 ```
 ```
-git clone [https://github.com/Armanyb1/Cc-tv-Hack-YB.git](https://github.com/Armanyb1/Cc-tv-Hack-YB.git)
+ git clone https://github.com/Armanyb1/Cc-tv-Hack-YB.git
 ```
 ```
 cd Cc-tv-Hack-YB
