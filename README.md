@@ -18,13 +18,22 @@ An advanced, 100% silent, and high-performance network security and camera recog
 **For Termux (Android):**
 টার্মাক্স ওপেন করে নিচের কমান্ডগুলো এক এক করে পেস্ট করো:
 
-```bash
+``'
 pkg update && pkg upgrade -y
+
+'''
+'''
 pkg install python git -y
+'''
+'''
 git clone [https://github.com/Armanyb1/Cc-tv-Hack-YB.git](https://github.com/Armanyb1/Cc-tv-Hack-YB.git)
+'''
+'''
 cd Cc-tv-Hack-YB
+'''
+'''
 python camera_tool.py
-```
+'''
 
 ---
 
