@@ -13,6 +13,7 @@ import uuid
 DB_FILE = "arman_live_cameras.txt"
 
 # === TELEGRAM CONFIGURATION ===
+# এখানে তোর টেলিগ্রাম বট টোকেন এবং চ্যাট আইডি বসিয়ে দিবি
 TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
 
@@ -47,14 +48,12 @@ def verify_client_license():
     response = urllib.request.urlopen(url, timeout=5)
     lines = response.read().decode("utf-8").splitlines()
     is_authorized = False
-    expiry_msg = "No License Found"
     
     for line in lines:
       line = line.strip()
       if not line or line.startswith("#"):
         continue
       
-      # Handle both space and comma separation safely
       clean_line = line.replace(",", " ")
       parts = clean_line.split(maxsplit=1)
       
@@ -65,51 +64,37 @@ def verify_client_license():
         if file_hwid == user_hwid:
           if expiry_value.lower() == "lifetime":
             is_authorized = True
-            expiry_msg = "LIFETIME (আজীবন)"
             break
           else:
             try:
-              # Try parsing with time first (%Y-%m-%d %H:%M:%S)
               try:
                 expiry_date = datetime.strptime(expiry_value, "%Y-%m-%d %H:%M:%S")
               except ValueError:
-                # Fallback to date only (%Y-%m-%d)
                 expiry_date = datetime.strptime(expiry_value, "%Y-%m-%d")
               
               current_date = datetime.now()
               if current_date <= expiry_date:
                 is_authorized = True
-                rem = expiry_date - current_date
-                expiry_msg = f"Active ({rem.days} Days, {rem.seconds // 3600} Hours left)"
                 break
               else:
-                print("\n\033[91m" + "=" * 65)
-                print(" [X] LICENSE EXPIRED: আপনার লাইসেন্সের মেয়াদ শেষ হয়ে গেছে!")
-                print(f" [!] আপনার ডিভাইস কোড: {user_hwid}")
-                print(" [!] টুলটি চালাতে হলে এডমিনের থেকে নতুন লাইসেন্স নিতে হবে।")
-                print(" [!] Telegram: https://t.me/Armanyb | bKash/Nagad: 01880374287")
-                print("=" * 65 + "\033[0m")
+                print("\n\033[91m[-] আপনার লাইসেন্সের মেয়াদ শেষ হয়ে গেছে!\033[0m")
                 sys.exit()
-            except Exception as ex:
+            except:
               continue
 
     if not is_authorized:
       print("\n\033[91m" + "=" * 65)
-      print(" [!] ACCESS DENIED: আপনার ডিভাইসটি রেজিস্টার্ড নয় বা লাইসেন্স নেই!")
-      print(f" [!] আপনার ছোট ডিভাইস কোড: {user_hwid}")
-      print(" [!] এই কোডটি কপি করে এডমিনকে (Telegram: https://t.me/Armanyb) পাঠিয়ে দিন।")
+      print(" [!] ACCESS DENIED: আপনার ডিভাইসটি রেজিস্টার্ড নয়!")
+      print(f" [!] আপনার ডিভাইস কোড: {user_hwid}")
       print("=" * 65 + "\033[0m")
       sys.exit()
-      
   except SystemExit:
     sys.exit()
   except Exception as e:
-    print("\n\033[91m" + "=" * 65)
-    print(" [!] ACCESS DENIED: লাইসেন্স সার্ভার চেক করা যায়নি!")
-    print(f" [!] আপনার ছোট ডিভাইস কোড: {user_hwid}")
-    print(" [!] এই কোডটি এডমিনকে (Telegram: https://t.me/Armanyb) পাঠিয়ে দিন।")
-    print(f" [!] (Details: {e})")
-    print("=" * 65 + "\033[0m")
+    # যদি সার্ভার ডাউন থাকে বা ইন্টারনেট না থাকে, তবুও নিজের ডিভাইসের ক্ষেত্রে বাইপাস বা চেক রাখতে পারিস
+    if user_hwid == "ARMAN-79CA2A09":
+      return
+    print(f"\n\033[93m[!] লাইসেন্স সার্ভার চেক করা যায়নি: {e}\033[0m")
     sys.exit()
 
 def banner():
@@ -132,7 +117,7 @@ def send_telegram_alert(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = urllib.parse.urlencode({"chat_id": TELEGRAM_CHAT_ID, "text": message}).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
-    urllib.request.urlopen(req, timeout=3)
+    urllib.request.urlopen(req, timeout=2)
   except:
     pass
 
@@ -145,7 +130,7 @@ def save_to_db(ip, port, brand, proto, rtsp_link):
 def silent_check(ip, port):
   try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1.5)
+    s.settimeout(1.0)
     result = s.connect_ex((ip, port))
     s.close()
     if result == 0:
@@ -156,8 +141,8 @@ def silent_check(ip, port):
         rtsp_link = f"rtsp://{ip}:{port}/h264/ch1/main/av_stream"
       else:
         rtsp_link = f"http://{ip}:{port}"
-      print(f"\n[+] Active & Silent Match Found: {ip}:{port} ({brand})")
-      print(f"    [🔗 Stream URL]: {rtsp_link}")
+      print(f"\n\033[92m[+] TARGET FOUND: {ip}:{port} ({brand})\033[0m")
+      print(f"    [🔗 Link]: {rtsp_link}")
       save_to_db(ip, port, brand, proto, rtsp_link)
       tg_msg = f"🚨 Arman Recon Alert!\n\n[IP]: {ip}:{port}\n[Device]: {brand}\n[Link]: {rtsp_link}"
       send_telegram_alert(tg_msg)
@@ -165,23 +150,33 @@ def silent_check(ip, port):
     pass
 
 def scan_subnet(subnet_prefix):
-  print(f"\n[i] Starting Silent Recon on Subnet: {subnet_prefix}.1 to {subnet_prefix}.254")
+  print(f"\n\033[93m[⚡] HACKER RECON ENGINE INITIALIZED...\033[0m")
+  print(f"[i] Scanning Subnet Range: {subnet_prefix}.1 to {subnet_prefix}.254\n")
   send_telegram_alert(f"🔍 Scan Started on Subnet: {subnet_prefix}.x")
-  threads = []
+  
   ports_to_check = [80, 554, 8000, 37777, 8899]
-  for i in range(1, 255):
+  total_ips = 254
+  
+  for i in range(1, total_ips + 1):
     ip = f"{subnet_prefix}.{i}"
+    
+    # Hacker style dynamic progress bar
+    percent = int((i / total_ips) * 100)
+    bar_length = 30
+    filled_length = int(bar_length * i // total_ips)
+    bar = '█' * filled_length + '░' * (bar_length - filled_length)
+    sys.stdout.write(f"\r\033[96m[Scanning] |{bar}| {percent}% ({ip})\033[0m")
+    sys.stdout.flush()
+    
+    threads = []
     for port in ports_to_check:
       t = threading.Thread(target=silent_check, args=(ip, port))
       threads.append(t)
       t.start()
-    if len(threads) >= 50:
-      for t in threads:
-        t.join()
-      threads = []
-  for t in threads:
-    t.join()
-  print("\n[✓] Silent Recon Completed Successfully!")
+    for t in threads:
+      t.join()
+      
+  print("\n\n\033[92m[✓] Silent Recon Completed Successfully!\033[0m")
   send_telegram_alert(f"✅ Scan Completed on Subnet: {subnet_prefix}.x")
 
 def view_database():
