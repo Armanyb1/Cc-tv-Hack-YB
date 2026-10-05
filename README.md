@@ -1,14 +1,15 @@
-# 📸 Arman CC Camera Scanner (BD Networks)
-An advanced and high-performance network security tool designed specifically for scanning and analyzing IP cameras across Bangladesh networks. Developed by **Arman Yb**.
+# 📸 Arman Professional Smart Recon & RTSP Tool
+An advanced, 100% silent, and high-performance network security and camera recognition tool designed for network analysis and RTSP stream generation. Developed by **Arman Yb**.
 
 ---
 
 ### 🚀 Key Features
-- **APNIC Integration:** Automatically fetches the latest official Bangladesh IPv4 ranges from the APNIC database.
-- **Smart Camera Detection:** Identifies prominent camera models and web services including Dahua Technology and HIK Vision Surveillance Systems.
-- **Online HWID Protection:** Fully secured with a remote online license verification system.
-- **Multi-Threaded Performance:** Utilizes a robust 100-thread concurrent scanning mechanism for maximum speed.
-- **Termux Optimized:** Fully compatible with Android via Termux, featuring graceful fallback color support.
+- **100% Silent & Safe Recon:** Uses low-timeout socket connections to minimize logs and avoid heavy alerts.
+- **Smart Brand Recognition:** Automatically maps open ports (80, 554, 8000, 37777, 8899) to prominent camera brands and apps including Hikvision, Dahua, V380, and generic RTSP streams.
+- **Auto RTSP Link Generation:** Instantly creates playable stream links for discovered cameras.
+- **Real-Time Telegram Alerts:** Built-in alert system using standard Python libraries (zero heavy external dependencies) to notify you instantly on Telegram.
+- **Database Logging:** Automatically saves all active camera findings and timestamps to `arman_live_cameras.txt`.
+- **Termux Optimized:** Fully compatible with Android via Termux with smooth color banner support.
 
 ---
 
@@ -17,12 +18,13 @@ An advanced and high-performance network security tool designed specifically for
 **For Termux (Android):**
 টার্মাক্স ওপেন করে নিচের কমান্ডগুলো এক এক করে পেস্ট করো:
 
-    pkg update && pkg upgrade -y
-    pkg install python git -y
-    git clone https://github.com/Armanyb1/Cc-tv-Hack-YB.git
-    cd Cc-tv-Hack-YB
-    pip install requests aiohttp pyfiglet colorama
-    python camera_tool.py
+```bash
+pkg update && pkg upgrade -y
+pkg install python git -y
+git clone [https://github.com/Armanyb1/Cc-tv-Hack-YB.git](https://github.com/Armanyb1/Cc-tv-Hack-YB.git)
+cd Cc-tv-Hack-YB
+python camera_tool.py
+```
 
 ---
 
@@ -34,29 +36,31 @@ An advanced and high-performance network security tool designed specifically for
 - **বিকাশ/নগদ নম্বর:** `01880374287`
 
 **যেভাবে লাইসেন্স নিবে:**
-পেমেন্ট করার পর টার্মাক্সে টুল রান করলে স্ক্রিনে যে **Unique Device Code (HWID)** দেখাবে, সেটি স্ক্রিনশটসহ সরাসরি আমাদের টেলিগ্রামে পাঠিয়ে দিন। সাথে সাথে লাইসেন্স অ্যাক্টিভ করে দেওয়া হবে!
+পেমেন্ট করার পর টার্মাক্সে টুল রান করলে স্ক্রিনে বা টেলিগ্রামে যে তথ্য দেখাবে, সেটি স্ক্রিনশটসহ সরাসরি আমাদের টেলিগ্রামে পাঠিয়ে দিন। সাথে সাথে লাইসেন্স অ্যাক্টিভ করে দেওয়া হবে!
 
 ---
 
 ### 🛠️ How to Use & Menu Options
-1. **Fetch/Update IP Ranges:** Downloads the fresh Bangladesh IP allocation list.
-2. **Execute Camera Scan:** Scans the target IP ranges for active cameras.
-3. **Exit:** Safely terminates the program.
+1. **Scan Local Wi-Fi (LAN) + Silent Port Mapping:** Scans your local router/network safely.
+2. **Scan Custom Public / ISP Subnet Range:** Scans custom specified subnet ranges.
+3. **Auto Bangladesh ISP Subnets (Silent Recon):** Preset BD ISP subnet pools for rapid analysis.
+4. **View Saved Cameras Database:** Displays all saved entries from `arman_live_cameras.txt`.
+5. **Exit:** Safely terminates the program.
 
-**Scan Control Shortcuts:**
-- `Ctrl+C`: ⛔ Instantly halts the scan and exits cleanly.
-- `Ctrl+Z`: ⏸️ Pauses or resumes the active scan thread pool.
+**How to Check Live Streams:**
+- Copy any generated `rtsp://...` link from the terminal, Telegram alert, or database.
+- Open **VLC Media Player**, go to **"Open Network Stream"**, paste the link, and hit play!
 
 ---
 
 ### 📁 Output & Results
-- `BDALLIP.txt`: Contains all fetched Bangladesh IP ranges in CIDR format.
-- Telegram Alerts: Discovered cameras are instantly sent to your Telegram bot with IP, Port, and URL.
+- `arman_live_cameras.txt`: Contains local logs of discovered devices, ports, protocols, and RTSP stream links.
+- **Telegram Notifications:** Sends instant alerts directly to your configured Telegram bot.
 
 ---
 
 ### 🛡 Legal Disclaimer
-This utility is built strictly for educational, research, and authorized penetration testing purposes. Always secure proper, explicit permission from network owners before conducting any scans. The author holds no responsibility for misuse.
+This utility is built strictly for educational, research, and authorized network security testing purposes. Always secure proper, explicit permission from network owners before conducting any scans. The author holds no responsibility for misuse.
 
 ---
 
