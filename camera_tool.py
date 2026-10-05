@@ -10,7 +10,7 @@ import urllib.request
 
 DB_FILE = "arman_live_cameras.txt"
 
-# === TELEGRAM CONFIGURATION (তোর বটের টোকেন ও চ্যাট আইডি এখানে থাকবে) ===
+# === TELEGRAM CONFIGURATION ===
 TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
 
@@ -28,14 +28,12 @@ PORT_MAPPING = {
 def get_device_hwid():
   """Generates a unique hardware ID for the client's device"""
   try:
-    # Combining platform details to create a unique device fingerprint
     system_info = (
         platform.node()
         + platform.machine()
         + platform.processor()
         + platform.system()
     )
-    # Creating a stable hash/string representation
     import hashlib
 
     hwid = hashlib.md5(system_info.encode("utf-8")).hexdigest().upper()
@@ -48,7 +46,6 @@ def verify_client_license():
   """Fetches keys.txt from GitHub and verifies client license and expiry date"""
   user_hwid = get_device_hwid()
   try:
-    # তোর গিটহাবের র-লিংক (Raw Link) থেকে keys.txt চেক করবে
     url = (
         "https://raw.githubusercontent.com/Armanyb1/Cc-tv-Hack-YB/main/keys.txt"
     )
@@ -67,12 +64,10 @@ def verify_client_license():
         file_hwid, expiry_value = parts[0], parts[1]
 
         if file_hwid == user_hwid:
-          # যদি লাইফটাইম হয়
           if expiry_value.lower() == "lifetime":
             is_authorized = True
             break
           else:
-            # ডেট চেক করার লজিক (YYYY-MM-DD ফরম্যাট)
             try:
               expiry_date = datetime.strptime(expiry_value, "%Y-%m-%d")
               current_date = datetime.now()
@@ -156,14 +151,13 @@ def silent_check(ip, port):
   """Silently checks the port and sends Telegram notification on success"""
   try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1.5)  # Low timeout for silent & fast check
+    s.settimeout(1.5)
     result = s.connect_ex((ip, port))
     s.close()
 
     if result == 0:
       brand, proto = PORT_MAPPING.get(port, ("Unknown IP Device", "TCP"))
 
-      # Generate RTSP Link if port is 554 or supports streaming
       if port == 554:
         rtsp_link = f"rtsp://{ip}:{port}/live/ch0"
       elif port == 8000:
@@ -176,7 +170,6 @@ def silent_check(ip, port):
 
       save_to_db(ip, port, brand, proto, rtsp_link)
 
-      # Send alert to Telegram
       tg_msg = f"🚨 Arman Recon Alert!\n\n[IP]: {ip}:{port}\n[Device]: {brand}\n[Link]: {rtsp_link}"
       send_telegram_alert(tg_msg)
   except:
@@ -223,12 +216,11 @@ def view_database():
       else:
         print("[!] Database is currently empty.")
   except FileNotFoundError:
-    print("[!] No database file found yet.")
+        print("[!] No database file found yet.")
   print("=" * 65)
 
 
 def main():
-  # টুল রান হওয়ার সাথে সাথেই লাইসেন্স চেক করবে
   verify_client_license()
 
   while True:
@@ -269,3 +261,5 @@ def main():
 
 if __name__ == "__main__":
   main()
+
+
